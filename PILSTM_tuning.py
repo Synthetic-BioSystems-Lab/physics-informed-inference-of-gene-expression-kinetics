@@ -4,10 +4,6 @@ import torch
 from torch import nn
 import matplotlib.pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader, random_split
-import math
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Using device: {device}")
 
 def inv_minmax(x, X_min, X_max):
     return x * (X_max - X_min) + X_min
@@ -58,6 +54,7 @@ class LSTM():
         self.weight_decay = weight_decay
         self.lambda_phys = lambda_phys
         self.hidden_dim = hidden_dim
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
     def fit(self, X, Y, batch_size=32):
         
@@ -91,7 +88,7 @@ class LSTM():
         train_loader = DataLoader(self.train_set, batch_size=batch_size, shuffle=True)
 
         # Model
-        self.module = LSTM_module(input_dim=X.shape[-1], hidden_dim=self.hidden_dim, output_dim=Y.shape[-1]).to(device)
+        self.module = LSTM_module(input_dim=X.shape[-1], hidden_dim=self.hidden_dim, output_dim=Y.shape[-1]).to(self.device)
         self.loss_fn = nn.MSELoss()
         optimizer = torch.optim.Adam(self.module.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         lambda_phys = self.lambda_phys
@@ -106,8 +103,8 @@ class LSTM():
             n_batches = 0
             
             for x_batch, y_batch in train_loader:
-                x_batch = x_batch.to(device)
-                y_batch = y_batch.to(device)
+                x_batch = x_batch.to(self.device)
+                y_batch = y_batch.to(self.device)
                 y_pred = self.module(x_batch)
 
                 loss_data = self.loss_fn(y_pred, y_batch)
@@ -157,18 +154,43 @@ class LSTM():
     
 def main():
 
+    # config = {
+    #     "lr": tune.lograndint(1e-5, 1e-2),
+    #     "weight_decay": tune.choice([0, 1e-5, 1e-4]),
+    #     "lambda_phys": tune.randint(0.001, 0.02),
+    #     "hidden_dim": tune.choice([32, 64, 128]),
+    #     "batch_size": tune.choice([32, 64, 128])
+    # }
+
+    X_lst = np.load('sim_TU_data/yfp.npy')
+    Y_lst = np.load('sim_TU_data/param_labels.npy')
+
     config = {
-        "lr": tune.lograndint(1e-5, 1e-2),
-        "weight_decay": tune.choice([0, 1e-5, 1e-4]),
-        "lambda_phys": tune.randint([0.001, 0.02]),
-        "hidden_dim": tune.choice([32, 64, 128]),
         "batch_size": tune.choice([32, 64, 128])
     }
 
+
     def train_lstm(config):
-        lstm = LSTM(n_epochs=2001, p_epoch=100, lr=config["lr"], weight_decay=config["weight_decay"], 
-                    lambda_phys=config["lambda_phys"], hidden_dim=config["hidden_dim"])
-        lstm.fit(X_train, Y_train, batch_size=config["batch_size"])
+        lstm = LSTM(n_epochs=2001, p_epoch=100, lr=1e-3, weight_decay=0, 
+                    lambda_phys=0.001, hidden_dim=64)
+        lstm.fit(X_lst, Y_lst, batch_size=config["batch_size"])
+
+    from ray.tune.schedulers import ASHAScheduler
+    from ray.tune.search.optuna import OptunaSearch
+
+    scheduler = ASHAScheduler(metric="overall_accuracy", mode="max", 
+                              max_t=2001, grace_period=100, reduction_factor=4)
+    optuna_search = OptunaSearch(metric="overall_accuracy", mode="max")
+
+    tuner = tune.Tuner(train_lstm, param_space=config, 
+                       tune_config=tune.TuneConfig(num_samples=2, 
+                                                   scheduler=scheduler, 
+                                                   search_alg=optuna_search))
+    
+    results = tuner.fit()
+    # print("Best config:", results.get_best_result().config)
+
+    
     
 if __name__ == "__main__":
     main()
