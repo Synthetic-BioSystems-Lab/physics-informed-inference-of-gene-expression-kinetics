@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
+  <model id="biocrnpyler_16371" name="biocrnpyler_16371" substanceUnits="mole" timeUnits="second" volumeUnits="litre" areaUnits="square_metre" lengthUnits="metre" extentUnits="mole">
+    <listOfUnitDefinitions>
+      <unitDefinition id="square_metre">
+        <listOfUnits>
+          <unit kind="metre" exponent="2" scale="0" multiplier="1"/>
+        </listOfUnits>
+      </unitDefinition>
+    </listOfUnitDefinitions>
+    <listOfCompartments>
+      <compartment id="default" name="default" spatialDimensions="3" size="1e-06" constant="true"/>
+    </listOfCompartments>
+    <listOfSpecies>
+      <species id="dna_part_prom_forward_part_rbs_forward_part_YFP_forward_part_t_forward_" name="dna_part_prom_forward_part_rbs_forward_part_YFP_forward_part_t_forward_" compartment="default" initialConcentration="0" substanceUnits="mole" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="rna_part_rbs_forward_part_YFP_forward_part_t_forward_" name="rna_part_rbs_forward_part_YFP_forward_part_t_forward_" compartment="default" initialConcentration="0" substanceUnits="mole" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+      <species id="protein_YFP_degtagged" name="protein_YFP_degtagged" compartment="default" initialConcentration="0" substanceUnits="mole" hasOnlySubstanceUnits="false" boundaryCondition="false" constant="false"/>
+    </listOfSpecies>
+    <listOfParameters>
+      <parameter id="ktx__" value="0.05" constant="true"/>
+      <parameter id="ktl__" value="0.0261799882386629" constant="true"/>
+      <parameter id="kdil__" value="0.00439070548265383" constant="true"/>
+    </listOfParameters>
+    <listOfReactions>
+      <reaction id="r0" name="r0" reversible="false">
+        <annotation>
+          <PropensityType> k=ktx__ type=massaction</PropensityType>
+        </annotation>
+        <listOfReactants>
+          <speciesReference species="dna_part_prom_forward_part_rbs_forward_part_YFP_forward_part_t_forward_" stoichiometry="1" constant="false"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="dna_part_prom_forward_part_rbs_forward_part_YFP_forward_part_t_forward_" stoichiometry="1" constant="false"/>
+          <speciesReference species="rna_part_rbs_forward_part_YFP_forward_part_t_forward_" stoichiometry="1" constant="false"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> ktx__ </ci>
+              <ci> dna_part_prom_forward_part_rbs_forward_part_YFP_forward_part_t_forward_ </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="r1" name="r1" reversible="false">
+        <annotation>
+          <PropensityType> k=ktl__ type=massaction</PropensityType>
+        </annotation>
+        <listOfReactants>
+          <speciesReference species="rna_part_rbs_forward_part_YFP_forward_part_t_forward_" stoichiometry="1" constant="false"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="rna_part_rbs_forward_part_YFP_forward_part_t_forward_" stoichiometry="1" constant="false"/>
+          <speciesReference species="protein_YFP_degtagged" stoichiometry="1" constant="false"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> ktl__ </ci>
+              <ci> rna_part_rbs_forward_part_YFP_forward_part_t_forward_ </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="r2" name="r2" reversible="false">
+        <annotation>
+          <PropensityType> k=kdil__ type=massaction</PropensityType>
+        </annotation>
+        <listOfReactants>
+          <speciesReference species="protein_YFP_degtagged" stoichiometry="1" constant="false"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> kdil__ </ci>
+              <ci> protein_YFP_degtagged </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="r3" name="r3" reversible="false">
+        <annotation>
+          <PropensityType> k=kdil__ type=massaction</PropensityType>
+        </annotation>
+        <listOfReactants>
+          <speciesReference species="rna_part_rbs_forward_part_YFP_forward_part_t_forward_" stoichiometry="1" constant="false"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> kdil__ </ci>
+              <ci> rna_part_rbs_forward_part_YFP_forward_part_t_forward_ </ci>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+    </listOfReactions>
+  </model>
+</sbml>
