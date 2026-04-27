@@ -14,17 +14,17 @@ def print_accuracy(y_true, y_pred, name):
     # accuracy within 5%
     acc_within_5 = ((err.abs() / (y_true.abs())) <= 0.05).float().mean().item() * 100.0
 
-    print(f"\n{name}: within 5% accuracy ={acc_within_5:.2f}%")
+    # print(f"\n{name}: within 5% accuracy ={acc_within_5:.2f}%")
     
     # "accuracy within 10%" (custom, intuitive)
     acc_within_10 = ((err.abs() / (y_true.abs())) <= 0.10).float().mean().item() * 100.0
 
-    print(f"{name}: within 10% accuracy ={acc_within_10:.2f}%")
+    # print(f"{name}: within 10% accuracy ={acc_within_10:.2f}%")
     
     # "accuracy within 25%" (custom, intuitive)
     acc_within_25 = ((err.abs() / (y_true.abs())) <= 0.25).float().mean().item() * 100.0
 
-    print(f"{name}: within 25% accuracy ={acc_within_25:.2f}%")
+    # print(f"{name}: within 25% accuracy ={acc_within_25:.2f}%")
     
     return acc_within_5
 
@@ -47,9 +47,8 @@ class LSTM_module(nn.Module):
         return out
 
 class LSTM():
-    def __init__(self, n_epochs=2001, p_epoch=100, lr=1e-3, weight_decay=0, lambda_phys=0.02, hidden_dim=64):
+    def __init__(self, n_epochs=2001, lr=1e-3, weight_decay=0, lambda_phys=0.02, hidden_dim=64):
         self.n_epochs = n_epochs
-        self.p_epoch = p_epoch
         self.lr = lr
         self.weight_decay = weight_decay
         self.lambda_phys = lambda_phys
@@ -150,29 +149,24 @@ class LSTM():
                 batch_accuracy = (ktl_5 + kdil_5 + mRNA_5) / 3
                 sum_accuracy += batch_accuracy
 
-            tune.report(overall_accuracy = sum_accuracy / n_batches)
+            tune.report({"overall_accuracy": sum_accuracy / n_batches})
     
 def main():
 
-    # config = {
-    #     "lr": tune.lograndint(1e-5, 1e-2),
-    #     "weight_decay": tune.choice([0, 1e-5, 1e-4]),
-    #     "lambda_phys": tune.randint(0.001, 0.02),
-    #     "hidden_dim": tune.choice([32, 64, 128]),
-    #     "batch_size": tune.choice([32, 64, 128])
-    # }
+    config = {
+        "lr": tune.loguniform(1e-5, 1e-2),
+        "weight_decay": tune.choice([0, 1e-5, 1e-4]),
+        "lambda_phys": tune.uniform(0.001, 0.02),
+        "hidden_dim": tune.choice([32, 64, 128]),
+        "batch_size": tune.choice([32, 64, 128])
+    }
 
     X_lst = np.load('sim_TU_data/yfp.npy')
     Y_lst = np.load('sim_TU_data/param_labels.npy')
 
-    config = {
-        "batch_size": tune.choice([32, 64, 128])
-    }
-
-
     def train_lstm(config):
-        lstm = LSTM(n_epochs=2001, p_epoch=100, lr=1e-3, weight_decay=0, 
-                    lambda_phys=0.001, hidden_dim=64)
+        lstm = LSTM(n_epochs=2001, lr=config["lr"], weight_decay=config["weight_decay"], 
+                    lambda_phys=config["lambda_phys"], hidden_dim=config["hidden_dim"])
         lstm.fit(X_lst, Y_lst, batch_size=config["batch_size"])
 
     from ray.tune.schedulers import ASHAScheduler
@@ -183,7 +177,7 @@ def main():
     optuna_search = OptunaSearch(metric="overall_accuracy", mode="max")
 
     tuner = tune.Tuner(train_lstm, param_space=config, 
-                       tune_config=tune.TuneConfig(num_samples=2, 
+                       tune_config=tune.TuneConfig(num_samples=50, 
                                                    scheduler=scheduler, 
                                                    search_alg=optuna_search))
     

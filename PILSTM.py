@@ -5,9 +5,6 @@ import matplotlib.pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader, random_split
 import math
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Using device: {device}")
-
 def inv_minmax(x, X_min, X_max):
     return x * (X_max - X_min) + X_min
 
@@ -80,12 +77,14 @@ class LSTM_module(nn.Module):
         return out
 
 class LSTM():
-    def __init__(self, n_epochs=2001, p_epoch=100, lr=1e-3, weight_decay=0, lambda_phys=0.02):
+    def __init__(self, n_epochs=2001, p_epoch=100, lr=1e-3, weight_decay=0, lambda_phys=0.02, hidden_dim=64):
         self.n_epochs = n_epochs
         self.p_epoch = p_epoch
         self.lr = lr
         self.weight_decay = weight_decay
         self.lambda_phys = lambda_phys
+        self.hidden_dim = hidden_dim
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
     def fit(self, X, Y, batch_size=32):
         
@@ -119,7 +118,7 @@ class LSTM():
         train_loader = DataLoader(self.train_set, batch_size=batch_size, shuffle=True)
 
         # Model
-        self.module = LSTM_module(input_dim=X.shape[-1], hidden_dim=64, output_dim=Y.shape[-1]).to(device)
+        self.module = LSTM_module(input_dim=X.shape[-1], hidden_dim=self.hidden_dim, output_dim=Y.shape[-1]).to(self.device)
         self.loss_fn = nn.MSELoss()
         optimizer = torch.optim.Adam(self.module.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         lambda_phys = self.lambda_phys
@@ -134,8 +133,8 @@ class LSTM():
             n_batches = 0
             
             for x_batch, y_batch in train_loader:
-                x_batch = x_batch.to(device)
-                y_batch = y_batch.to(device)
+                x_batch = x_batch.to(self.device)
+                y_batch = y_batch.to(self.device)
                 y_pred = self.module(x_batch)
 
                 loss_data = self.loss_fn(y_pred, y_batch)
@@ -173,10 +172,10 @@ class LSTM():
                     train_idx = self.train_set.indices
                     test_idx = self.test_set.indices
                     
-                    x_train = X_all[train_idx].to(device)
-                    y_train = Y_all[train_idx].to(device)
-                    x_test  = X_all[test_idx].to(device)
-                    y_test  = Y_all[test_idx].to(device)
+                    x_train = X_all[train_idx].to(self.device)
+                    y_train = Y_all[train_idx].to(self.device)
+                    x_test  = X_all[test_idx].to(self.device)
+                    y_test  = Y_all[test_idx].to(self.device)
 
                     test_pred = self.module(x_test)
                     test_loss = self.loss_fn(test_pred, y_test)
@@ -238,10 +237,10 @@ class LSTM():
             train_idx = self.train_set.indices
             test_idx = self.test_set.indices
             
-            x_train = X_all[train_idx].to(device)
-            y_train = Y_all[train_idx].to(device)
-            x_test  = X_all[test_idx].to(device)
-            y_test  = Y_all[test_idx].to(device)
+            x_train = X_all[train_idx].to(self.device)
+            y_train = Y_all[train_idx].to(self.device)
+            x_test  = X_all[test_idx].to(self.device)
+            y_test  = Y_all[test_idx].to(self.device)
 
             test_pred = self.module(x_test)
             test_loss = self.loss_fn(test_pred, y_test)
@@ -285,16 +284,16 @@ def main():
     X_lst = np.load('sim_TU_data/yfp.npy')
     Y_lst = np.load('sim_TU_data/param_labels.npy')
     
-    lambda_phys_lst = [0.001]#[0, 0.001]
+    lambda_phys_lst = [0.013]#[0, 0.001]
     accuracy_lst = []
     
     for i in range(len(lambda_phys_lst)):
         
         torch.manual_seed(308380)
     
-        model = LSTM(n_epochs=8001, p_epoch=1000, lr=1e-3, weight_decay=0, 
-                     lambda_phys=lambda_phys_lst[i])
-        model.fit(X_lst, Y_lst)
+        model = LSTM(n_epochs=8001, p_epoch=1000, lr=2e-3, weight_decay=0, 
+                     lambda_phys=lambda_phys_lst[i], hidden_dim=32)
+        model.fit(X_lst, Y_lst, batch_size=32)
         model.plot_loss()
         acc = model.predict()
         
