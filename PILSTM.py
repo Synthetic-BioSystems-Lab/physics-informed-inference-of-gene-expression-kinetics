@@ -283,7 +283,7 @@ def main():
             p.unlink()
         
     X_lst = np.load('sim_TU_data/yfp.npy')
-    Y_lst = np.load('sim_TU_data/param_labels.npy')#, allow_pickle=True)
+    Y_lst = np.load('sim_TU_data/param_labels.npy')
     
     lambda_phys_lst = [0.001]#[0, 0.001]
     accuracy_lst = []
@@ -305,3 +305,4 @@ def main():
     
 if __name__ == "__main__":
     main()
+    
