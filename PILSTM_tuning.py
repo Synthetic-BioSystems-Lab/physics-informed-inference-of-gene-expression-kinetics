@@ -12,36 +12,6 @@ print(f"Using device: {device}")
 def inv_minmax(x, X_min, X_max):
     return x * (X_max - X_min) + X_min
 
-
-def plot_predictions(x_train, y_train, x_test, y_test, y_pred, title=""):
-    x_train, x_test = np.asarray(x_train), np.asarray(x_test)
-    y_train, y_test, y_pred = np.asarray(y_train), np.asarray(y_test), np.asarray(y_pred)   
-
-    k_lst = ['ktl', 'kdil', 'Final [mRNA]']
-
-    n_out = y_train.shape[1]
-    
-    cols = math.ceil(math.sqrt(n_out))
-    rows = math.ceil(n_out/cols)
-    
-    fig, axes = plt.subplots(rows, cols, figsize=(6*cols, 5*rows), sharex=True)
-    axes = np.atleast_1d(axes).ravel()
-    
-    for k in range(n_out):
-        ax = axes[k]
-        ax.scatter(x_train, y_train[:, k], c="b", s=10, alpha=0.6, label="Train")
-        ax.scatter(x_test, y_test[:, k],  c="g", s=10, alpha=0.6, label="Test")
-        ax.scatter(x_test, y_pred[:, k],  c="r", s=10, alpha=0.6, label="Pred")
-        ax.set_xlabel("Final [FP]")
-        ax.set_ylabel(f"{k_lst[k]}")
-        ax.grid(alpha=0.2)
-
-    axes[0].legend()
-    fig.suptitle(title)
-    plt.tight_layout()
-    plt.savefig(f"plots/{title.replace(' ', '_')}.pdf")
-    plt.close()
-
 def print_accuracy(y_true, y_pred, name):
     err = y_pred - y_true
 
@@ -81,12 +51,13 @@ class LSTM_module(nn.Module):
         return out
 
 class LSTM():
-    def __init__(self, n_epochs=2001, p_epoch=100, lr=1e-3, weight_decay=0, lambda_phys=0.02):
+    def __init__(self, n_epochs=2001, p_epoch=100, lr=1e-3, weight_decay=0, lambda_phys=0.02, hidden_dim=64):
         self.n_epochs = n_epochs
         self.p_epoch = p_epoch
         self.lr = lr
         self.weight_decay = weight_decay
         self.lambda_phys = lambda_phys
+        self.hidden_dim = hidden_dim
 
     def fit(self, X, Y, batch_size=32):
         
@@ -120,7 +91,7 @@ class LSTM():
         train_loader = DataLoader(self.train_set, batch_size=batch_size, shuffle=True)
 
         # Model
-        self.module = LSTM_module(input_dim=X.shape[-1], hidden_dim=64, output_dim=Y.shape[-1]).to(device)
+        self.module = LSTM_module(input_dim=X.shape[-1], hidden_dim=self.hidden_dim, output_dim=Y.shape[-1]).to(device)
         self.loss_fn = nn.MSELoss()
         optimizer = torch.optim.Adam(self.module.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         lambda_phys = self.lambda_phys
@@ -131,7 +102,7 @@ class LSTM():
         for self.epoch in range(self.n_epochs):
             self.module.train()
             
-            sum_data = sum_phys = sum_total = 0.0
+            sum_data = sum_phys = sum_total = sum_accuracy = 0.0
             n_batches = 0
             
             for x_batch, y_batch in train_loader:
@@ -167,142 +138,37 @@ class LSTM():
                 sum_total += loss.item()
                 n_batches += 1
 
-            if self.epoch % self.p_epoch == 0 or self.epoch == self.n_epochs - 1:
-                self.module.eval()
-                with torch.inference_mode():
-                    X_all, Y_all = self.dataset.tensors
-                    train_idx = self.train_set.indices
-                    test_idx = self.test_set.indices
-                    
-                    x_train = X_all[train_idx].to(device)
-                    y_train = Y_all[train_idx].to(device)
-                    x_test  = X_all[test_idx].to(device)
-                    y_test  = Y_all[test_idx].to(device)
-
-                    test_pred = self.module(x_test)
-                    test_loss = self.loss_fn(test_pred, y_test)
-                    
-                    train_data_epoch = sum_data / n_batches
-                    train_phys_epoch = sum_phys / n_batches
-                    
-                    self.train_loss_lst.append(train_data_epoch)
-                    self.test_loss_lst.append(test_loss.item())
-                    self.train_phys_loss_lst.append(train_phys_epoch)
-                    self.epochs_lst.append(self.epoch)
-
-                print(f"{self.epoch:04d} | train {train_data_epoch:.4f} | test {test_loss.item():.4f} "
-                      f"| phys {train_phys_epoch:.4f} ")
+                ktl_true  = inv_minmax(y_batch[:, 0], self.Y0_min, self.Y0_max)
+                kdil_true = inv_minmax(y_batch[:, 1], self.Y1_min, self.Y1_max)
+                mRNA_true = inv_minmax(y_batch[:, 2], self.Y2_min, self.Y2_max)
                 
-                x_train_plot = inv_minmax(x_train, self.X_min, self.X_max)
-                x_test_plot = inv_minmax(x_test, self.X_min, self.X_max)
+                ktl_pred  = inv_minmax(y_pred[:, 0], self.Y0_min, self.Y0_max)
+                kdil_pred = inv_minmax(y_pred[:, 1], self.Y1_min, self.Y1_max)
+                mRNA_pred = inv_minmax(y_pred[:, 2], self.Y2_min, self.Y2_max)
                 
-                y_train_plot = y_train.clone()
-                y_train_plot[:, 0] = inv_minmax(y_train_plot[:, 0], self.Y0_min, self.Y0_max)
-                y_train_plot[:, 1] = inv_minmax(y_train_plot[:, 1], self.Y1_min, self.Y1_max)
-                y_train_plot[:, 2] = inv_minmax(y_train_plot[:, 2], self.Y2_min, self.Y2_max)
-                
-                y_test_plot = y_test.clone()
-                y_test_plot[:, 0] = inv_minmax(y_test_plot[:, 0], self.Y0_min, self.Y0_max)
-                y_test_plot[:, 1] = inv_minmax(y_test_plot[:, 1], self.Y1_min, self.Y1_max)
-                y_test_plot[:, 2] = inv_minmax(y_test_plot[:, 2], self.Y2_min, self.Y2_max)
-                
-                test_pred_plot = test_pred.clone()
-                test_pred_plot[:, 0] = inv_minmax(test_pred_plot[:, 0], self.Y0_min, self.Y0_max)
-                test_pred_plot[:, 1] = inv_minmax(test_pred_plot[:, 1], self.Y1_min, self.Y1_max)
-                test_pred_plot[:, 2] = inv_minmax(test_pred_plot[:, 2], self.Y2_min, self.Y2_max)
-                
-                plot_predictions(x_train_plot[:, -1, :].cpu().numpy(),   # [N, F] not [N]
-                                 y_train_plot.cpu().numpy(),             # [N, 2]
-                                 x_test_plot[:, -1, :].cpu().numpy(),    # [N, F]
-                                 y_test_plot.cpu().numpy(),              # [N, 2]
-                                 test_pred_plot.cpu().numpy(),           # [N, 2]
-                                 title=f"PILSTM Epoch {self.epoch}")
-
-    def plot_loss(self):
+                ktl_5 = print_accuracy(ktl_true,  ktl_pred,  "ktl")
+                kdil_5 = print_accuracy(kdil_true, kdil_pred, "kdil")
+                mRNA_5 = print_accuracy(mRNA_true,  mRNA_pred,  "mRNA")
         
-        plt.figure()
-        
-        plt.plot(self.epochs_lst, self.train_loss_lst, label='train loss')
-        plt.plot(self.epochs_lst, self.test_loss_lst, label='test loss')
-        plt.plot(self.epochs_lst, self.train_phys_loss_lst, label='physics loss')
-        
-        plt.xlabel('Epochs')
-        plt.legend()
-        plt.savefig(f"plots/loss_{self.epoch}.pdf")
-        plt.close()
+                batch_accuracy = (ktl_5 + kdil_5 + mRNA_5) / 3
+                sum_accuracy += batch_accuracy
+
+            tune.report(overall_accuracy = sum_accuracy / n_batches)
     
-    def predict(self):
-        
-        self.module.eval()
-        with torch.inference_mode():
-            X_all, Y_all = self.dataset.tensors
-            train_idx = self.train_set.indices
-            test_idx = self.test_set.indices
-            
-            x_train = X_all[train_idx].to(device)
-            y_train = Y_all[train_idx].to(device)
-            x_test  = X_all[test_idx].to(device)
-            y_test  = Y_all[test_idx].to(device)
-
-            test_pred = self.module(x_test)
-            test_loss = self.loss_fn(test_pred, y_test)
-
-        # true/pred for test split
-    
-        ktl_true  = inv_minmax(y_test[:, 0], self.Y0_min, self.Y0_max)
-        kdil_true = inv_minmax(y_test[:, 1], self.Y1_min, self.Y1_max)
-        mRNA_true = inv_minmax(y_test[:, 2], self.Y2_min, self.Y2_max)
-        DNA_true = torch.ones_like(test_pred[:, 0])  #y_test[:, 3]
-        
-        ktl_pred  = inv_minmax(test_pred[:, 0], self.Y0_min, self.Y0_max)
-        kdil_pred = inv_minmax(test_pred[:, 1], self.Y1_min, self.Y1_max)
-        mRNA_pred = inv_minmax(test_pred[:, 2], self.Y2_min, self.Y2_max)
-        DNA_pred = torch.ones_like(test_pred[:, 0])  #test_pred[:, 3]
-        
-        ktl_5 = print_accuracy(ktl_true,  ktl_pred,  "ktl")
-        kdil_5 = print_accuracy(kdil_true, kdil_pred, "kdil")
-        mRNA_5 = print_accuracy(mRNA_true,  mRNA_pred,  "mRNA")
-        
-        overall_accuracy = (ktl_5 + kdil_5 + mRNA_5) / 3
-        print(f'\nOverall Accuracy within 5%: {overall_accuracy:.2f}%')
-        
-        return overall_accuracy
-    
-
 def main():
 
-    from pathlib import Path
-    import shutil
+    config = {
+        "lr": tune.lograndint(1e-5, 1e-2),
+        "weight_decay": tune.choice([0, 1e-5, 1e-4]),
+        "lambda_phys": tune.randint([0.001, 0.02]),
+        "hidden_dim": tune.choice([32, 64, 128]),
+        "batch_size": tune.choice([32, 64, 128])
+    }
 
-    plots = Path("plots")
-    plots.mkdir(exist_ok=True)
-
-    for p in plots.iterdir():
-        if p.is_dir():
-            shutil.rmtree(p)
-        else:
-            p.unlink()
-        
-    X_lst = np.load('sim_TU_data/yfp.npy')
-    Y_lst = np.load('sim_TU_data/param_labels.npy')
-    
-    lambda_phys_lst = [0.001]#[0, 0.001]
-    accuracy_lst = []
-    
-    for i in range(len(lambda_phys_lst)):
-        
-        torch.manual_seed(308380)
-    
-        model = LSTM(n_epochs=8001, p_epoch=1000, lr=1e-3, weight_decay=0, 
-                     lambda_phys=lambda_phys_lst[i])
-        model.fit(X_lst, Y_lst)
-        model.plot_loss()
-        acc = model.predict()
-        
-        accuracy_lst.append(acc)
-        
-    print('lambda physics: ', lambda_phys_lst)
-    print('Accuracy: ', accuracy_lst)
+    def train_lstm(config):
+        lstm = LSTM(n_epochs=2001, p_epoch=100, lr=config["lr"], weight_decay=config["weight_decay"], 
+                    lambda_phys=config["lambda_phys"], hidden_dim=config["hidden_dim"])
+        lstm.fit(X_train, Y_train, batch_size=config["batch_size"])
     
 if __name__ == "__main__":
     main()
