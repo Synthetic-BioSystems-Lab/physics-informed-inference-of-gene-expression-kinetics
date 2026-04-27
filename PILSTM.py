@@ -291,7 +291,7 @@ def main():
         
         torch.manual_seed(308380)
     
-        model = LSTM(n_epochs=8001, p_epoch=1000, lr=2e-3, weight_decay=0, 
+        model = LSTM(n_epochs=15001, p_epoch=1000, lr=2e-3, weight_decay=0, 
                      lambda_phys=lambda_phys_lst[i], hidden_dim=32)
         model.fit(X_lst, Y_lst, batch_size=32)
         model.plot_loss()
