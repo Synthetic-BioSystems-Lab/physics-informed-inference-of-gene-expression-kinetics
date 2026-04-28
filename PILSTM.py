@@ -124,7 +124,7 @@ class LSTM():
         lambda_phys = self.lambda_phys
         
         self.train_loss_lst, self.test_loss_lst, self.epochs_lst = [], [], []
-        self.train_phys_loss_lst = []
+        self.train_phys_loss_lst, self.acc_lst = [], []
 
         for self.epoch in range(self.n_epochs):
             self.module.train()
@@ -209,12 +209,18 @@ class LSTM():
                 test_pred_plot[:, 1] = inv_minmax(test_pred_plot[:, 1], self.Y1_min, self.Y1_max)
                 test_pred_plot[:, 2] = inv_minmax(test_pred_plot[:, 2], self.Y2_min, self.Y2_max)
                 
-                plot_predictions(x_train_plot[:, -1, :].cpu().numpy(),   # [N, F] not [N]
-                                 y_train_plot.cpu().numpy(),             # [N, 2]
-                                 x_test_plot[:, -1, :].cpu().numpy(),    # [N, F]
-                                 y_test_plot.cpu().numpy(),              # [N, 2]
-                                 test_pred_plot.cpu().numpy(),           # [N, 2]
-                                 title=f"PILSTM Epoch {self.epoch}")
+                err = test_pred_plot - y_test_plot
+
+                # accuracy within 5%
+                acc_within_5 = ((err.abs() / (y_test_plot.abs())) <= 0.05).float().mean().item() * 100.0
+                self.acc_lst.append(acc_within_5)
+
+                plot_predictions(x_train_plot[:, -1, :].cpu().numpy(),   
+                                 y_train_plot.cpu().numpy(),             
+                                 x_test_plot[:, -1, :].cpu().numpy(),    
+                                 y_test_plot.cpu().numpy(),              
+                                 test_pred_plot.cpu().numpy(),       
+                                 title=f"PILSTM Epoch {self.epoch} lambda physics {lambda_phys:.4f}")
 
     def plot_loss(self):
         
@@ -226,7 +232,18 @@ class LSTM():
         
         plt.xlabel('Epochs')
         plt.legend()
-        plt.savefig(f"plots/loss_{self.epoch}.pdf")
+        plt.savefig(f"plots/loss_{self.epoch}_{self.lambda_phys}.pdf")
+        plt.close()
+
+    def plot_accuracy(self):
+        
+        plt.figure()
+        
+        plt.plot(self.epochs_lst, self.acc_lst)
+
+        plt.ylabel('Accuracy within 5% (%)')
+        plt.xlabel('Epochs')
+        plt.savefig(f"plots/accuracy_{self.epoch}_{self.lambda_phys}.pdf")
         plt.close()
     
     def predict(self):
@@ -280,27 +297,35 @@ def main():
             shutil.rmtree(p)
         else:
             p.unlink()
+
+    import time
+
+    start = time.time()
         
     X_lst = np.load('sim_TU_data/yfp.npy')
     Y_lst = np.load('sim_TU_data/param_labels.npy')
     
-    lambda_phys_lst = [0.013]#[0, 0.001]
+    lambda_phys_lst = [0, 0.005]#[0, 0.001]
     accuracy_lst = []
     
     for i in range(len(lambda_phys_lst)):
         
         torch.manual_seed(308380)
     
-        model = LSTM(n_epochs=15001, p_epoch=1000, lr=2e-3, weight_decay=0, 
-                     lambda_phys=lambda_phys_lst[i], hidden_dim=32)
+        model = LSTM(n_epochs=35001, p_epoch=1000, lr=1e-3, weight_decay=0, 
+                     lambda_phys=lambda_phys_lst[i], hidden_dim=64)
         model.fit(X_lst, Y_lst, batch_size=32)
         model.plot_loss()
+        model.plot_accuracy()   
         acc = model.predict()
         
         accuracy_lst.append(acc)
         
     print('lambda physics: ', lambda_phys_lst)
     print('Accuracy: ', accuracy_lst)
+
+    end = time.time()
+    print(f"Total time: {(end - start)/60:.2f} minutes")
     
 if __name__ == "__main__":
     main()

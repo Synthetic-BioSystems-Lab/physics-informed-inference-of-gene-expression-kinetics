@@ -154,18 +154,18 @@ class LSTM():
 def main():
 
     config = {
-        "lr": tune.loguniform(1e-5, 1e-2),
-        "weight_decay": tune.choice([0, 1e-5, 1e-4]),
-        "lambda_phys": tune.uniform(0.001, 0.02),
-        "hidden_dim": tune.choice([32, 64, 128]),
-        "batch_size": tune.choice([32, 64, 128])
+        "lr": tune.loguniform(1e-4, 1e-2),
+        #"weight_decay": tune.choice([0, 1e-5]),
+        "lambda_phys": tune.uniform(0.0001, 0.02),
+        "hidden_dim": tune.choice([32, 64]),
+        "batch_size": tune.choice([32, 64])
     }
 
     X_lst = np.load('sim_TU_data/yfp.npy')
     Y_lst = np.load('sim_TU_data/param_labels.npy')
 
     def train_lstm(config):
-        lstm = LSTM(n_epochs=2001, lr=config["lr"], weight_decay=config["weight_decay"], 
+        lstm = LSTM(n_epochs=2001, lr=config["lr"], weight_decay=0, 
                     lambda_phys=config["lambda_phys"], hidden_dim=config["hidden_dim"])
         lstm.fit(X_lst, Y_lst, batch_size=config["batch_size"])
 
@@ -182,9 +182,8 @@ def main():
                                                    search_alg=optuna_search))
     
     results = tuner.fit()
-    # print("Best config:", results.get_best_result().config)
+    print("Best config:", results.get_best_result(metric="overall_accuracy", mode="max").config)
 
-    
     
 if __name__ == "__main__":
     main()
