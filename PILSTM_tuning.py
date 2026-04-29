@@ -8,23 +8,11 @@ from torch.utils.data import TensorDataset, DataLoader, random_split
 def inv_minmax(x, X_min, X_max):
     return x * (X_max - X_min) + X_min
 
-def print_accuracy(y_true, y_pred, name):
+def get_accuracy(y_true, y_pred):
     err = y_pred - y_true
 
     # accuracy within 5%
     acc_within_5 = ((err.abs() / (y_true.abs())) <= 0.05).float().mean().item() * 100.0
-
-    # print(f"\n{name}: within 5% accuracy ={acc_within_5:.2f}%")
-    
-    # "accuracy within 10%" (custom, intuitive)
-    acc_within_10 = ((err.abs() / (y_true.abs())) <= 0.10).float().mean().item() * 100.0
-
-    # print(f"{name}: within 10% accuracy ={acc_within_10:.2f}%")
-    
-    # "accuracy within 25%" (custom, intuitive)
-    acc_within_25 = ((err.abs() / (y_true.abs())) <= 0.25).float().mean().item() * 100.0
-
-    # print(f"{name}: within 25% accuracy ={acc_within_25:.2f}%")
     
     return acc_within_5
 
@@ -142,9 +130,9 @@ class LSTM():
                 kdil_pred = inv_minmax(y_pred[:, 1], self.Y1_min, self.Y1_max)
                 mRNA_pred = inv_minmax(y_pred[:, 2], self.Y2_min, self.Y2_max)
                 
-                ktl_5 = print_accuracy(ktl_true,  ktl_pred,  "ktl")
-                kdil_5 = print_accuracy(kdil_true, kdil_pred, "kdil")
-                mRNA_5 = print_accuracy(mRNA_true,  mRNA_pred,  "mRNA")
+                ktl_5 = get_accuracy(ktl_true,  ktl_pred)
+                kdil_5 = get_accuracy(kdil_true, kdil_pred)
+                mRNA_5 = get_accuracy(mRNA_true,  mRNA_pred)
         
                 batch_accuracy = (ktl_5 + kdil_5 + mRNA_5) / 3
                 sum_accuracy += batch_accuracy

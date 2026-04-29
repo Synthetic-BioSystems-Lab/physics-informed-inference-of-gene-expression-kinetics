@@ -35,7 +35,7 @@ def plot_predictions(x_train, y_train, x_test, y_test, y_pred, title=""):
     axes[0].legend()
     fig.suptitle(title)
     plt.tight_layout()
-    plt.savefig(f"plots/{title.replace(' ', '_')}.pdf")
+    plt.savefig(f"plots/{title.replace(' ', '_')}.png")
     plt.close()
 
 def print_accuracy(y_true, y_pred, name):
@@ -232,7 +232,7 @@ class LSTM():
         
         plt.xlabel('Epochs')
         plt.legend()
-        plt.savefig(f"plots/loss_{self.epoch}_{self.lambda_phys}.pdf")
+        plt.savefig(f"plots/loss_{self.epoch}_{self.lambda_phys}.png")
         plt.close()
 
     def plot_accuracy(self):
@@ -243,7 +243,7 @@ class LSTM():
 
         plt.ylabel('Accuracy within 5% (%)')
         plt.xlabel('Epochs')
-        plt.savefig(f"plots/accuracy_{self.epoch}_{self.lambda_phys}.pdf")
+        plt.savefig(f"plots/accuracy_{self.epoch}_{self.lambda_phys}.png")
         plt.close()
     
     def predict(self):
@@ -305,14 +305,14 @@ def main():
     X_lst = np.load('sim_TU_data/yfp.npy')
     Y_lst = np.load('sim_TU_data/param_labels.npy')
     
-    lambda_phys_lst = [0, 0.005]#[0, 0.001]
+    lambda_phys_lst = [0, 0.01]
     accuracy_lst = []
     
     for i in range(len(lambda_phys_lst)):
         
         torch.manual_seed(308380)
     
-        model = LSTM(n_epochs=35001, p_epoch=1000, lr=1e-3, weight_decay=0, 
+        model = LSTM(n_epochs=30001, p_epoch=1000, lr=1e-3, weight_decay=0, 
                      lambda_phys=lambda_phys_lst[i], hidden_dim=64)
         model.fit(X_lst, Y_lst, batch_size=32)
         model.plot_loss()
