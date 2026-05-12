@@ -24,7 +24,7 @@ class bioCRNpyler_sim():
         CDS_YFP = CDS('YFP', 'YFP')
         CDS_YFP.protein = Species('YFP', material_type='protein', attributes=['degtagged'])
         t = Terminator('t')
-        YFP_construct = DNA_construct([prom, rbs, CDS_YFP, t])
+        YFP_construct = DNA_construct(name='dna_YFP', parts_list=[prom, rbs, CDS_YFP, t])
         
         # Mixture and CRN creation
         M = SimpleTxTlExtract('simtxtl', parameters = parameters, global_mechanisms=global_mechanisms, 

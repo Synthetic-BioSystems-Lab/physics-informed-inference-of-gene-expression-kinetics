@@ -1,0 +1,45 @@
+from bioscrape.lineage import LineageModel, LineageVolumeSplitter #For building our Model
+from bioscrape.lineage import py_SimulateCellLineage
+import numpy as np
+import pylab as plt
+import time as pytime
+from time import process_time 
+
+#Load Toggle CRN
+
+vsplit_options = {
+    "default":"binomial",
+    "volume":"binomial",
+    "dna_part_prom_forward_part_rbs_forward_part_YFP_forward_part_t_forward_":"duplicate"
+}
+copy_number = 1
+x0 = {"dna_part_prom_forward_part_rbs_forward_part_YFP_forward_part_t_forward_": copy_number}
+Msimple_TU_events = LineageModel(sbml_filename = "crn_docs/test.xml", initial_condition_dict = x0)
+
+print("Species in Msimple_TU_events", list(Msimple_TU_events.get_species()))
+
+g = .005
+
+kgrow = 1.
+
+kdeath = 1.0
+Kdeath = 2500
+
+vsplit = LineageVolumeSplitter(Msimple_TU_events, options = vsplit_options)
+#Msimple_TU_events.create_division_rule("deltaV", {"threshold":1.0}, vsplit)
+
+Msimple_TU_events.create_volume_event("linear volume", {"growth_rate":g}, "massaction", {"k":kgrow, "species":""})
+
+Msimple_TU_events.create_division_event("division", {}, "massaction", {"k":kgrow/1000., "species":""}, vsplit)
+
+
+#Too much waste and the cell dies
+Msimple_TU_events.create_death_event("death", {}, "hillpositive", {"k":kdeath, "s1":"protein_lacI", "n":4, "K":Kdeath})
+Msimple_TU_events.create_death_event("death", {}, "hillpositive", {"k":kdeath, "s1":"protein_tetR", "n":4, "K":Kdeath})
+
+timepoints = np.arange(0, 800, 1.0)
+print("Simulating")
+ts = process_time()
+lineage = py_SimulateCellLineage(timepoints = timepoints, Model = Msimple_TU_events)
+te = process_time()
+print("Simulation C=complete in", te-ts, "s")
