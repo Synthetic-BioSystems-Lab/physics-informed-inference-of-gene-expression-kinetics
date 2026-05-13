@@ -20,10 +20,7 @@ print("Species in Msimple_TU_events", list(Msimple_TU_events.get_species()))
 
 g = .005
 
-kgrow = 1.
-
-kdeath = 1.0
-Kdeath = 2500
+kgrow = 0.5
 
 vsplit = LineageVolumeSplitter(Msimple_TU_events, options = vsplit_options)
 #Msimple_TU_events.create_division_rule("deltaV", {"threshold":1.0}, vsplit)
@@ -32,12 +29,11 @@ Msimple_TU_events.create_volume_event("linear volume", {"growth_rate":g}, "massa
 
 Msimple_TU_events.create_division_event("division", {}, "massaction", {"k":kgrow/1000., "species":""}, vsplit)
 
+kdeath = 10
+Kdeath = 1000
+Msimple_TU_events.create_death_event("death", {}, "hillpositive", {"k":kdeath, "s1":"X", "n":2, "K":Kdeath})
 
-#Too much waste and the cell dies
-Msimple_TU_events.create_death_event("death", {}, "hillpositive", {"k":kdeath, "s1":"protein_lacI", "n":4, "K":Kdeath})
-Msimple_TU_events.create_death_event("death", {}, "hillpositive", {"k":kdeath, "s1":"protein_tetR", "n":4, "K":Kdeath})
-
-timepoints = np.arange(0, 800, 1.0)
+timepoints = np.arange(0, 3000, 1.0)
 print("Simulating")
 ts = process_time()
 lineage = py_SimulateCellLineage(timepoints = timepoints, Model = Msimple_TU_events)
@@ -51,9 +47,35 @@ color_list = [(i/len(sch_tree), 0, 1.-i/len(sch_tree)) for i in range(len(sch_tr
 plt.figure(figsize = (10, 10))
 
 plt.subplot(311)
+YFP = np.zeros_like(timepoints)
+cell_count = np.zeros_like(timepoints)
+start = 0
+
 for generation in range(len(sch_tree)):
+
     L = sch_tree[generation]
+
     for sch in L:
+
         df = sch.py_get_dataframe(Model = Msimple_TU_events)
-        print(df.columns)
-        plt.plot(df["time"], df["'protein_YFP_degtagged'"], color = color_list[generation], alpha = .5)
+        plt.plot(df["time"], df["protein_YFP_degtagged"], color = color_list[generation], alpha = .5)
+        start = int(df["time"].iloc[0])
+        first_index = df.index[0]
+
+        if df["time"].iloc[-1] == timepoints[-1]:
+            stop = int(df["time"].iloc[-1]) + 1
+            last_index = df.index[-1] + 1
+        else:
+            stop = int(df["time"].iloc[-1])
+            last_index = df.index[-1]
+
+        YFP[start:stop] += df["protein_YFP_degtagged"][first_index:last_index]
+        cell_count[start:stop] += 1
+
+plt.subplot(312)      
+plt.plot(timepoints, YFP, color = color_list[generation], alpha = .5)
+
+plt.subplot(313)
+plt.plot(timepoints, cell_count, color = color_list[generation], alpha = .5)
+
+plt.show()
