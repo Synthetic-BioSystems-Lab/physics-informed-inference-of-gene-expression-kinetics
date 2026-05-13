@@ -43,3 +43,17 @@ ts = process_time()
 lineage = py_SimulateCellLineage(timepoints = timepoints, Model = Msimple_TU_events)
 te = process_time()
 print("Simulation C=complete in", te-ts, "s")
+
+sch_tree = lineage.get_schnitzes_by_generation()
+
+color_list = [(i/len(sch_tree), 0, 1.-i/len(sch_tree)) for i in range(len(sch_tree))]
+
+plt.figure(figsize = (10, 10))
+
+plt.subplot(311)
+for generation in range(len(sch_tree)):
+    L = sch_tree[generation]
+    for sch in L:
+        df = sch.py_get_dataframe(Model = Msimple_TU_events)
+        print(df.columns)
+        plt.plot(df["time"], df["'protein_YFP_degtagged'"], color = color_list[generation], alpha = .5)
