@@ -38,6 +38,19 @@ def plot_predictions(x_train, y_train, x_test, y_test, y_pred, title=""):
     plt.savefig(f"plots/{title.replace(' ', '_')}.png")
     plt.close()
 
+    for k in range(n_out):
+        plt.figure()
+
+        plt.scatter(x_train, y_train[:, k], c="b", s=10, alpha=0.6, label="Train")
+        plt.scatter(x_test, y_test[:, k],  c="g", s=10, alpha=0.6, label="Test")
+        plt.scatter(x_test, y_pred[:, k],  c="r", s=10, alpha=0.6, label="Pred")
+        plt.xlabel("Final [FP]")
+        plt.ylabel(f"{k_lst[k]}")
+
+        plt.tight_layout()
+        plt.savefig(f"plots/{title.replace(' ', '_')}_{k_lst[k]}.svg")
+        plt.close()
+
 def print_accuracy(y_true, y_pred, name):
     err = y_pred - y_true
 
@@ -243,7 +256,7 @@ class LSTM():
 
         plt.ylabel('Accuracy within 5% (%)')
         plt.xlabel('Epochs')
-        plt.savefig(f"plots/accuracy_{self.epoch}_{self.lambda_phys}.png")
+        plt.savefig(f"plots/accuracy_{self.epoch}_{self.lambda_phys}.svg")
         plt.close()
     
     def predict(self):
