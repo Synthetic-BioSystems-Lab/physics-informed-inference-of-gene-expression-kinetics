@@ -18,9 +18,9 @@ Msimple_TU_events = LineageModel(sbml_filename = "crn_docs/test.xml", initial_co
 
 print("Species in Msimple_TU_events", list(Msimple_TU_events.get_species()))
 
-g = .005
+g = .03
 
-kgrow = 0.5
+kgrow = 1.0
 
 vsplit = LineageVolumeSplitter(Msimple_TU_events, options = vsplit_options)
 #Msimple_TU_events.create_division_rule("deltaV", {"threshold":1.0}, vsplit)
@@ -29,11 +29,13 @@ Msimple_TU_events.create_volume_event("linear volume", {"growth_rate":g}, "massa
 
 Msimple_TU_events.create_division_event("division", {}, "massaction", {"k":kgrow/1000., "species":""}, vsplit)
 
-kdeath = 10
-Kdeath = 1000
-Msimple_TU_events.create_death_event("death", {}, "hillpositive", {"k":kdeath, "s1":"X", "n":2, "K":Kdeath})
+kdeath = 0.2
+Kdeath = 5
+Msimple_TU_events.create_death_event("death", {}, "hillpositive", {"k":kdeath, "s1":"protein_YFP_degtagged", "n":2, "K":Kdeath})
 
-timepoints = np.arange(0, 3000, 1.0)
+#Msimple_TU_events.create_death_event("general")
+
+timepoints = np.arange(0, 500, 1.0)
 print("Simulating")
 ts = process_time()
 lineage = py_SimulateCellLineage(timepoints = timepoints, Model = Msimple_TU_events)
