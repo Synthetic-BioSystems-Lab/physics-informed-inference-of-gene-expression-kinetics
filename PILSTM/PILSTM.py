@@ -35,7 +35,7 @@ def plot_predictions(x_train, y_train, x_test, y_test, y_pred, title=""):
     axes[0].legend()
     fig.suptitle(title)
     plt.tight_layout()
-    plt.savefig(f"plots/{title.replace(' ', '_')}.png")
+    plt.savefig(f"plots/{title.replace(' ', '_')}.svg")
     plt.close()
 
     for k in range(n_out):
@@ -245,7 +245,7 @@ class LSTM():
         
         plt.xlabel('Epochs')
         plt.legend()
-        plt.savefig(f"plots/loss_{self.epoch}_{self.lambda_phys}.png")
+        plt.savefig(f"plots/PILSTM_loss_{self.epoch}_{self.lambda_phys}.svg")
         plt.close()
 
     def plot_accuracy(self):
@@ -256,7 +256,7 @@ class LSTM():
 
         plt.ylabel('Accuracy within 5% (%)')
         plt.xlabel('Epochs')
-        plt.savefig(f"plots/accuracy_{self.epoch}_{self.lambda_phys}.svg")
+        plt.savefig(f"plots/PILSTM_accuracy_{self.epoch}_{self.lambda_phys}.svg")
         plt.close()
     
     def predict(self):
