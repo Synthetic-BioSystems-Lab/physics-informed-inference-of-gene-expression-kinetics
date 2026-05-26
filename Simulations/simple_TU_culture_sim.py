@@ -35,7 +35,7 @@ Msimple_TU_events.create_death_event("death", {}, "hillpositive", {"k":kdeath, "
 
 #Msimple_TU_events.create_death_event("general")
 
-timepoints = np.arange(0, 500, 1.0)
+timepoints = np.arange(0, 100, 1.0)
 print("Simulating")
 ts = process_time()
 lineage = py_SimulateCellLineage(timepoints = timepoints, Model = Msimple_TU_events)
