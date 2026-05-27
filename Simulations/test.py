@@ -160,6 +160,9 @@ for i in range(100):
                                                 "protein_YFP_degtagged":0,
                                                 "rna_part_rbs_forward_part_YFP_forward_part_t_forward_":0
                                                 })
+    growth_model = GrowthModel(statecontain=state_container)
+    bioscrape_model = bioscrapeModel(sbml_filename="crn_docs/temp.xml", statecontain=state_container)
+    models = [growth_model, bioscrape_model]
     multimodel = Multimodel(models=models, state_container=state_container, t_final=500)
     multimodel_res = multimodel.run_sim()
     plt.plot(multimodel_res["time"], multimodel_res["protein_YFP_degtagged"], alpha=0.3, color='g')
