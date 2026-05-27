@@ -155,6 +155,11 @@ for i in range(100):
     kdil = abs(np.random.uniform(0.001, 0.01))# + np.random.normal(scale=0.0005))
 
     simpleTUsbmlGenerator(ktx=0.05, ktl=ktl, kdil=kdil)
+    state_container = StateContainer(initial_state={"X":1, 
+                                                "dna_part_prom_forward_part_rbs_forward_part_YFP_forward_part_t_forward_":1,
+                                                "protein_YFP_degtagged":0,
+                                                "rna_part_rbs_forward_part_YFP_forward_part_t_forward_":0
+                                                })
     multimodel = Multimodel(models=models, state_container=state_container, t_final=500)
     multimodel_res = multimodel.run_sim()
     plt.plot(multimodel_res["time"], multimodel_res["protein_YFP_degtagged"], alpha=0.3, color='g')

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sbml xmlns="http://www.sbml.org/sbml/level3/version2/core" level="3" version="2">
-  <model id="biocrnpyler_718816" name="biocrnpyler_718816" substanceUnits="mole" timeUnits="second" volumeUnits="litre" areaUnits="square_metre" lengthUnits="metre" extentUnits="mole">
+  <model id="biocrnpyler_996259" name="biocrnpyler_996259" substanceUnits="mole" timeUnits="second" volumeUnits="litre" areaUnits="square_metre" lengthUnits="metre" extentUnits="mole">
     <listOfUnitDefinitions>
       <unitDefinition id="square_metre">
         <listOfUnits>
@@ -18,8 +18,8 @@
     </listOfSpecies>
     <listOfParameters>
       <parameter id="ktx__" value="0.05" constant="true"/>
-      <parameter id="ktl__" value="0.0321418654749724" constant="true"/>
-      <parameter id="kdil__" value="0.00374342740829129" constant="true"/>
+      <parameter id="ktl__" value="0.0525112535411578" constant="true"/>
+      <parameter id="kdil__" value="0.00467613477966772" constant="true"/>
     </listOfParameters>
     <listOfReactions>
       <reaction id="r0" name="r0" reversible="false">
