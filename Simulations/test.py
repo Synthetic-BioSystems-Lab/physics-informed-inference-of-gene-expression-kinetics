@@ -1,9 +1,33 @@
+from biocrnpyler import *
 from bioscrape.types import Model
 from bioscrape.simulator import py_simulate_model
 from scipy.integrate import solve_ivp
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+
+np.random.seed(8380)
+
+def simpleTUsbmlGenerator(ktx=0.05,ktl=0.05, kdil=0.0075):
+    # Parameters and Global Mechanisms
+    parameters={"ktx":ktx, "ktl":ktl, "kdeg":0.001, "kdil":kdil}
+
+    dilution_mechanism = Dilution(filter_dict = {"degtagged":True}, default_on = False)
+    global_mechanisms = {"dilution":dilution_mechanism}
+    
+    # DNA parts
+    prom = Promoter('prom')
+    rbs = RBS('rbs')
+    CDS_YFP = CDS('YFP', 'YFP')
+    CDS_YFP.protein = Species('YFP', material_type='protein', attributes=['degtagged'])
+    t = Terminator('t')
+    YFP_construct = DNA_construct(name='dna_YFP', parts_list=[prom, rbs, CDS_YFP, t])
+    
+    # Mixture and CRN creation
+    M = SimpleTxTlExtract('simtxtl', parameters = parameters, global_mechanisms=global_mechanisms, 
+                            components=[YFP_construct])
+    CRN = M.compile_crn()
+    CRN.write_sbml_file(f'crn_docs/temp.xml') #saving CRN as sbml
 
 class StateContainer:
     def __init__(self, initial_state:dict):
@@ -119,3 +143,27 @@ plt.ylabel('YFP')
 
 plt.tight_layout()
 plt.show()
+
+X_lst = []
+Y_lst = []
+
+plt.figure()
+
+for i in range(100):
+
+    ktl = abs(np.random.uniform(0.01, 0.1))# + np.random.normal(scale=0.005))
+    kdil = abs(np.random.uniform(0.001, 0.01))# + np.random.normal(scale=0.0005))
+
+    simpleTUsbmlGenerator(ktx=0.05, ktl=ktl, kdil=kdil)
+    multimodel = Multimodel(models=models, state_container=state_container, t_final=500)
+    multimodel_res = multimodel.run_sim()
+    plt.plot(multimodel_res["time"], multimodel_res["protein_YFP_degtagged"], alpha=0.3, color='g')
+
+    X_lst.append(multimodel_res["protein_YFP_degtagged"])
+    Y_lst.append([ktl, kdil, multimodel_res['rna_part_rbs_forward_part_YFP_forward_part_t_forward_'].iloc[-1]])
+
+plt.show()
+
+np.save('sim_TU_data/yfp_culture.npy', X_lst)
+np.save('sim_TU_data/param_labels_culture.npy', Y_lst)
+np.save('sim_TU_data/time_culture.npy', multimodel_res['time'])
