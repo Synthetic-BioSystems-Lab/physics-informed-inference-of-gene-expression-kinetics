@@ -1,0 +1,36 @@
+import time
+import numpy as np
+import torch
+import sys
+sys.path.insert(0, '/home/zacha/1_Projects/DL')
+for p in sys.path:
+    print(p)
+
+import PINN.PINN_v2 as NN
+
+start = time.time()
+
+X_lst = np.load("Simulations/sim_TU_data/yfp_culture.npy")
+Y_lst = np.load("Simulations/sim_TU_data/param_labels_culture.npy")
+
+lambda_phys_lst = [0, 0.02]
+accuracy_lst = []
+
+for i in range(len(lambda_phys_lst)):
+
+    torch.manual_seed(308380)
+
+    model = NN.PINN(n_epochs=30001, p_epoch=1000, lr=9.2e-3, weight_decay=0, 
+                     lambda_phys=lambda_phys_lst[i], hidden_dim=32)
+    model.fit(X_lst, Y_lst, batch_size=32)
+    model.plot_loss()
+    model.plot_accuracy()   
+    acc = model.predict()
+        
+    accuracy_lst.append(acc)
+        
+print('lambda physics: ', lambda_phys_lst)
+print('Accuracy: ', accuracy_lst)
+
+end = time.time()
+print(f"Total time: {(end - start)/60:.2f} minutes")

@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader, random_split
 import math
 
+time = np.load('Simulations/sim_TU_data/time_culture.npy')
+
 def inv_minmax(x, X_min, X_max):
     return x * (X_max - X_min) + X_min
 
@@ -35,7 +37,7 @@ def plot_predictions(x_train, y_train, x_test, y_test, y_pred, title=""):
     axes[0].legend()
     fig.suptitle(title)
     plt.tight_layout()
-    plt.savefig(f"plots/{title.replace(' ', '_')}.svg")
+    plt.savefig(f"Experiments/Simulated_Cultures/plots/{title.replace(' ', '_')}_v2.svg")
     plt.close()
 
     for k in range(n_out):
@@ -48,7 +50,7 @@ def plot_predictions(x_train, y_train, x_test, y_test, y_pred, title=""):
         plt.ylabel(f"{k_lst[k]}")
 
         plt.tight_layout()
-        plt.savefig(f"plots/{title.replace(' ', '_')}_{k_lst[k]}.svg")
+        plt.savefig(f"Experiments/Simulated_Cultures/plots/{title.replace(' ', '_')}_{k_lst[k]}_v2.svg")
         plt.close()
 
 def print_accuracy(y_true, y_pred, name):
@@ -155,7 +157,10 @@ class PINN():
                 
                 yfp_final = inv_minmax(x_batch[:, -1], self.X_min, self.X_max)
                 yfp_penult = inv_minmax(x_batch[:, -2], self.X_min, self.X_max)
-                
+
+                time_lst =np.load("Simulations/sim_TU_data/time_culture.npy")
+                dt = time_lst[-2] - time_lst[-1]
+
                 # 0 = (ktl * M) - (kdil * A) - dAdt
                 eps = 1e-6
                 res = ktl * mrna - kdil * yfp_final - ((yfp_final - yfp_penult) / dt)
@@ -243,7 +248,7 @@ class PINN():
         
         plt.xlabel('Epochs')
         plt.legend()
-        plt.savefig(f"plots/loss_{self.epoch}_{self.lambda_phys}.png")
+        plt.savefig(f"Experiments/Simulated_Cultures/plots/PINN_v2_loss_{self.epoch}_{self.lambda_phys}.png")
         plt.close()
 
     def plot_accuracy(self):
@@ -254,7 +259,7 @@ class PINN():
 
         plt.ylabel('Accuracy within 5% (%)')
         plt.xlabel('Epochs')
-        plt.savefig(f"plots/PINN_accuracy_{self.epoch}_{self.lambda_phys}.svg")
+        plt.savefig(f"Experiments/Simulated_Cultures/plots/PINN_v2_accuracy_{self.epoch}_{self.lambda_phys}.svg")
         plt.close()
     
     def predict(self):
