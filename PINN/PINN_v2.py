@@ -92,7 +92,8 @@ class PINN_module(nn.Module):
         return out
 
 class PINN():
-    def __init__(self, save_direct, n_epochs=2001, p_epoch=100, lr=1e-3, weight_decay=0, lambda_phys=0.02, hidden_dim=64):
+    def __init__(self, save_direct, n_epochs=2001, p_epoch=100, lr=1e-3, weight_decay=0, lambda_phys=0.02, hidden_dim=64,
+                 phys_start_epoch=100):
         self.save_direct = save_direct
         self.n_epochs = n_epochs
         self.p_epoch = p_epoch
@@ -101,7 +102,8 @@ class PINN():
         self.lambda_phys = lambda_phys
         self.hidden_dim = hidden_dim
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-
+        self.phys_start_epoch = phys_start_epoch
+        
     def fit(self, X, Y, batch_size=32):
         
         X = np.array(X, dtype=np.float32)
@@ -129,7 +131,7 @@ class PINN():
         test_size = len(Y) - train_size
         self.train_set, self.test_set = random_split(self.dataset, [train_size, test_size])
 
-        train_loader = DataLoader(self.train_set, batch_size=batch_size, shuffle=True)
+        train_loader = DataLoader(self.train_set, batch_size=batch_size, shuffle=True, drop_last=True)
 
         # Model
         self.module = PINN_module(input_dim=X.shape[-1], hidden_dim=self.hidden_dim, output_dim=Y.shape[-1]).to(self.device)
@@ -161,7 +163,7 @@ class PINN():
                 yfp_penult = inv_minmax(x_batch[:, -2], self.X_min, self.X_max)
 
                 time_lst =np.load("Simulations/sim_TU_data/time_culture.npy")
-                dt = time_lst[-2] - time_lst[-1]
+                dt = time_lst[-1] - time_lst[-2]
 
                 # 0 = (ktl * M) - (kdil * A) - dAdt
                 eps = 1e-6
@@ -169,7 +171,7 @@ class PINN():
                 scale1 = (ktl * mrna).abs() + (kdil * yfp_final).abs() + ((yfp_final - yfp_penult) / dt).abs() + eps
                 loss_phys = (res.abs() / scale1).mean()
                               
-                if self.epoch <= 100:
+                if self.epoch <= self.phys_start_epoch:
                     loss = loss_data
                 else:
                     loss = loss_data + lambda_phys * loss_phys

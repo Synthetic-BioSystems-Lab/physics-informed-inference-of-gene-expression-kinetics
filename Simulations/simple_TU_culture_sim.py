@@ -149,7 +149,7 @@ Y_lst = []
 
 plt.figure()
 
-for i in range(100):
+for i in range(1000):
 
     ktl = abs(np.random.uniform(0.01, 0.1))# + np.random.normal(scale=0.005))
     kdil = abs(np.random.uniform(0.001, 0.01))# + np.random.normal(scale=0.0005))

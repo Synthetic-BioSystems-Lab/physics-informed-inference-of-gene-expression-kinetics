@@ -47,6 +47,9 @@ class PINN():
         self.phys_start_epoch = phys_start_epoch
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
+        time_lst =np.load("Simulations/sim_TU_data/time_culture.npy")
+        self.dt = time_lst[-1] - time_lst[-2]
+
     def fit(self, X, Y, batch_size=32):
         
         X = np.array(X, dtype=np.float32)
@@ -104,14 +107,11 @@ class PINN():
                 
                 yfp_final = inv_minmax(x_batch[:, -1], self.X_min, self.X_max)
                 yfp_penult = inv_minmax(x_batch[:, -2], self.X_min, self.X_max)
-                
-                time_lst =np.load("Simulations/sim_TU_data/time_culture.npy")
-                dt = time_lst[-2] - time_lst[-1]
 
                 # 0 = (ktl * M) - (kdil * A) - dAdt
                 eps = 1e-6
-                res = ktl * mrna - kdil * yfp_final - ((yfp_final - yfp_penult) / dt)
-                scale1 = (ktl * mrna).abs() + (kdil * yfp_final).abs() + ((yfp_final - yfp_penult) / dt).abs() + eps
+                res = ktl * mrna - kdil * yfp_final - ((yfp_final - yfp_penult) / self.dt)
+                scale1 = (ktl * mrna).abs() + (kdil * yfp_final).abs() + ((yfp_final - yfp_penult) / self.dt).abs() + eps
                 loss_phys = (res.abs() / scale1).mean()
                 
                 if self.epoch <= self.phys_start_epoch:
@@ -150,18 +150,18 @@ def main():
 
     config = {
         "lr": tune.loguniform(1e-4, 1e-2),
-        "weight_decay": tune.choice([0, 1e-5, 1e-3, 1e-2]),
-        "lambda_phys": tune.uniform(0, 0.02),
-        "hidden_dim": tune.choice([32, 64, 128]),
+        # "weight_decay": tune.choice([0, 1e-5, 1e-3, 1e-2]),
+        "lambda_phys": tune.loguniform(0.00001, 10),
+        "hidden_dim": tune.choice([32, 64]),
         "batch_size": tune.choice([32, 64]),
-        "phys_start_epoch": tune.uniform(0, 2000)
+        "phys_start_epoch": tune.choice([500, 1000, 1500])
     }
 
     X_lst = np.load("Simulations/sim_TU_data/yfp_culture.npy")
     Y_lst = np.load("Simulations/sim_TU_data/param_labels_culture.npy")
 
     def train_pinn(config):
-        pinn = PINN(n_epochs=2001, lr=config["lr"], weight_decay=config["weight_decay"], 
+        pinn = PINN(n_epochs=2001, lr=config["lr"], weight_decay=0, 
                     lambda_phys=config["lambda_phys"], hidden_dim=config["hidden_dim"],
                     phys_start_epoch=config["phys_start_epoch"])
         pinn.fit(X_lst, Y_lst, batch_size=config["batch_size"])
