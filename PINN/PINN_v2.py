@@ -5,13 +5,11 @@ import matplotlib.pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader, random_split
 import math
 
-time = np.load('Simulations/sim_TU_data/time_culture.npy')
-
 def inv_minmax(x, X_min, X_max):
     return x * (X_max - X_min) + X_min
 
 
-def plot_predictions(x_train, y_train, x_test, y_test, y_pred, title=""):
+def plot_predictions(save_direct, x_train, y_train, x_test, y_test, y_pred, title=""):
     x_train, x_test = np.asarray(x_train), np.asarray(x_test)
     y_train, y_test, y_pred = np.asarray(y_train), np.asarray(y_test), np.asarray(y_pred)   
 
@@ -37,7 +35,7 @@ def plot_predictions(x_train, y_train, x_test, y_test, y_pred, title=""):
     axes[0].legend()
     fig.suptitle(title)
     plt.tight_layout()
-    plt.savefig(f"Experiments/Simulated_Cultures/plots/{title.replace(' ', '_')}_v2.svg")
+    plt.savefig(f"{save_direct}/{title.replace(' ', '_')}_v2.svg")
     plt.close()
 
     for k in range(n_out):
@@ -50,7 +48,7 @@ def plot_predictions(x_train, y_train, x_test, y_test, y_pred, title=""):
         plt.ylabel(f"{k_lst[k]}")
 
         plt.tight_layout()
-        plt.savefig(f"Experiments/Simulated_Cultures/plots/{title.replace(' ', '_')}_{k_lst[k]}_v2.svg")
+        plt.savefig(f"{save_direct}/{title.replace(' ', '_')}_{k_lst[k]}_v2.svg")
         plt.close()
 
 def print_accuracy(y_true, y_pred, name):
@@ -79,7 +77,8 @@ class PINN_module(nn.Module):
         super().__init__()
 
         self.fc1 = nn.Linear(input_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, output_dim)
+        self.fc2 = nn.Linear(hidden_dim, int(hidden_dim/2))
+        self.fc3 = nn.Linear(int(hidden_dim/2), output_dim)
         self.activation = nn.Softplus()
 
     def forward(self, x):
@@ -87,11 +86,14 @@ class PINN_module(nn.Module):
         out = self.fc1(x)
         out = self.activation(out)
         out = self.fc2(out)
+        out = self.activation(out)
+        out = self.fc3(out)
 
         return out
 
 class PINN():
-    def __init__(self, n_epochs=2001, p_epoch=100, lr=1e-3, weight_decay=0, lambda_phys=0.02, hidden_dim=64):
+    def __init__(self, save_direct, n_epochs=2001, p_epoch=100, lr=1e-3, weight_decay=0, lambda_phys=0.02, hidden_dim=64):
+        self.save_direct = save_direct
         self.n_epochs = n_epochs
         self.p_epoch = p_epoch
         self.lr = lr
@@ -166,10 +168,11 @@ class PINN():
                 res = ktl * mrna - kdil * yfp_final - ((yfp_final - yfp_penult) / dt)
                 scale1 = (ktl * mrna).abs() + (kdil * yfp_final).abs() + ((yfp_final - yfp_penult) / dt).abs() + eps
                 loss_phys = (res.abs() / scale1).mean()
-                
-                # loss_phys = 0
                               
-                loss = loss_data + lambda_phys * loss_phys
+                if self.epoch <= 100:
+                    loss = loss_data
+                else:
+                    loss = loss_data + lambda_phys * loss_phys
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -181,57 +184,58 @@ class PINN():
                 sum_total += loss.item()
                 n_batches += 1
 
+            with torch.inference_mode():
+                X_all, Y_all = self.dataset.tensors
+                train_idx = self.train_set.indices
+                test_idx = self.test_set.indices
+                
+                x_train = X_all[train_idx].to(self.device)
+                y_train = Y_all[train_idx].to(self.device)
+                x_test  = X_all[test_idx].to(self.device)
+                y_test  = Y_all[test_idx].to(self.device)
+
+                test_pred = self.module(x_test)
+                test_loss = self.loss_fn(test_pred, y_test)
+                
+                train_data_epoch = sum_data / n_batches
+                train_phys_epoch = sum_phys / n_batches
+                
+                self.train_loss_lst.append(train_data_epoch)
+                self.test_loss_lst.append(test_loss.item())
+                self.train_phys_loss_lst.append(train_phys_epoch)
+                self.epochs_lst.append(self.epoch)
+
+            x_train_plot = inv_minmax(x_train, self.X_min, self.X_max)
+            x_test_plot = inv_minmax(x_test, self.X_min, self.X_max)
+            
+            y_train_plot = y_train.clone()
+            y_train_plot[:, 0] = inv_minmax(y_train_plot[:, 0], self.Y0_min, self.Y0_max)
+            y_train_plot[:, 1] = inv_minmax(y_train_plot[:, 1], self.Y1_min, self.Y1_max)
+            y_train_plot[:, 2] = inv_minmax(y_train_plot[:, 2], self.Y2_min, self.Y2_max)
+            
+            y_test_plot = y_test.clone()
+            y_test_plot[:, 0] = inv_minmax(y_test_plot[:, 0], self.Y0_min, self.Y0_max)
+            y_test_plot[:, 1] = inv_minmax(y_test_plot[:, 1], self.Y1_min, self.Y1_max)
+            y_test_plot[:, 2] = inv_minmax(y_test_plot[:, 2], self.Y2_min, self.Y2_max)
+            
+            test_pred_plot = test_pred.clone()
+            test_pred_plot[:, 0] = inv_minmax(test_pred_plot[:, 0], self.Y0_min, self.Y0_max)
+            test_pred_plot[:, 1] = inv_minmax(test_pred_plot[:, 1], self.Y1_min, self.Y1_max)
+            test_pred_plot[:, 2] = inv_minmax(test_pred_plot[:, 2], self.Y2_min, self.Y2_max)
+            
+            err = test_pred_plot - y_test_plot
+            
+            # accuracy within 5%
+            acc_within_5 = ((err.abs() / (y_test_plot.abs())) <= 0.05).float().mean().item() * 100.0
+            self.acc_lst.append(acc_within_5)
+
             if self.epoch % self.p_epoch == 0 or self.epoch == self.n_epochs - 1:
                 self.module.eval()
-                with torch.inference_mode():
-                    X_all, Y_all = self.dataset.tensors
-                    train_idx = self.train_set.indices
-                    test_idx = self.test_set.indices
-                    
-                    x_train = X_all[train_idx].to(self.device)
-                    y_train = Y_all[train_idx].to(self.device)
-                    x_test  = X_all[test_idx].to(self.device)
-                    y_test  = Y_all[test_idx].to(self.device)
-
-                    test_pred = self.module(x_test)
-                    test_loss = self.loss_fn(test_pred, y_test)
-                    
-                    train_data_epoch = sum_data / n_batches
-                    train_phys_epoch = sum_phys / n_batches
-                    
-                    self.train_loss_lst.append(train_data_epoch)
-                    self.test_loss_lst.append(test_loss.item())
-                    self.train_phys_loss_lst.append(train_phys_epoch)
-                    self.epochs_lst.append(self.epoch)
 
                 print(f"{self.epoch:04d} | train {train_data_epoch:.4f} | test {test_loss.item():.4f} "
                       f"| phys {train_phys_epoch:.4f} ")
                 
-                x_train_plot = inv_minmax(x_train, self.X_min, self.X_max)
-                x_test_plot = inv_minmax(x_test, self.X_min, self.X_max)
-                
-                y_train_plot = y_train.clone()
-                y_train_plot[:, 0] = inv_minmax(y_train_plot[:, 0], self.Y0_min, self.Y0_max)
-                y_train_plot[:, 1] = inv_minmax(y_train_plot[:, 1], self.Y1_min, self.Y1_max)
-                y_train_plot[:, 2] = inv_minmax(y_train_plot[:, 2], self.Y2_min, self.Y2_max)
-                
-                y_test_plot = y_test.clone()
-                y_test_plot[:, 0] = inv_minmax(y_test_plot[:, 0], self.Y0_min, self.Y0_max)
-                y_test_plot[:, 1] = inv_minmax(y_test_plot[:, 1], self.Y1_min, self.Y1_max)
-                y_test_plot[:, 2] = inv_minmax(y_test_plot[:, 2], self.Y2_min, self.Y2_max)
-                
-                test_pred_plot = test_pred.clone()
-                test_pred_plot[:, 0] = inv_minmax(test_pred_plot[:, 0], self.Y0_min, self.Y0_max)
-                test_pred_plot[:, 1] = inv_minmax(test_pred_plot[:, 1], self.Y1_min, self.Y1_max)
-                test_pred_plot[:, 2] = inv_minmax(test_pred_plot[:, 2], self.Y2_min, self.Y2_max)
-                
-                err = test_pred_plot - y_test_plot
-
-                # accuracy within 5%
-                acc_within_5 = ((err.abs() / (y_test_plot.abs())) <= 0.05).float().mean().item() * 100.0
-                self.acc_lst.append(acc_within_5)
-
-                plot_predictions(x_train_plot[:, -1].cpu().numpy(),   
+                plot_predictions(self.save_direct, x_train_plot[:, -1].cpu().numpy(),   
                                  y_train_plot.cpu().numpy(),             
                                  x_test_plot[:, -1].cpu().numpy(),    
                                  y_test_plot.cpu().numpy(),              
@@ -248,7 +252,7 @@ class PINN():
         
         plt.xlabel('Epochs')
         plt.legend()
-        plt.savefig(f"Experiments/Simulated_Cultures/plots/PINN_v2_loss_{self.epoch}_{self.lambda_phys}.png")
+        plt.savefig(f"{self.save_direct}/PINN_v2_loss_{self.epoch}_{self.lambda_phys}.png")
         plt.close()
 
     def plot_accuracy(self):
@@ -259,7 +263,7 @@ class PINN():
 
         plt.ylabel('Accuracy within 5% (%)')
         plt.xlabel('Epochs')
-        plt.savefig(f"Experiments/Simulated_Cultures/plots/PINN_v2_accuracy_{self.epoch}_{self.lambda_phys}.svg")
+        plt.savefig(f"{self.save_direct}/PINN_v2_accuracy_{self.epoch}_{self.lambda_phys}.svg")
         plt.close()
     
     def predict(self):
