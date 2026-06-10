@@ -10,7 +10,7 @@ np.random.seed(8380)
 
 def simpleTUsbmlGenerator(ktx=0.05,ktl=0.05, kdil=0.0075):
     # Parameters and Global Mechanisms
-    parameters={"ktx":ktx, "ktl":ktl, "kdeg":0.001, "kdil":kdil}
+    parameters={"ktx":ktx, "ktl":ktl, "kdil":kdil}
 
     dilution_mechanism = Dilution(filter_dict = {"degtagged":True}, default_on = False)
     global_mechanisms = {"dilution":dilution_mechanism}
@@ -27,7 +27,7 @@ def simpleTUsbmlGenerator(ktx=0.05,ktl=0.05, kdil=0.0075):
     M = SimpleTxTlExtract('simtxtl', parameters = parameters, global_mechanisms=global_mechanisms, 
                             components=[YFP_construct])
     CRN = M.compile_crn()
-    CRN.write_sbml_file(f'crn_docs/temp.xml') #saving CRN as sbml
+    CRN.write_sbml_file(f'Simulations/crn_docs/temp.xml') #saving CRN as sbml
 
 class StateContainer:
     def __init__(self, initial_state:dict):
@@ -48,7 +48,7 @@ class StateContainer:
         return self.df
     
 class GrowthModel:
-    def __init__(self,statecontain:StateContainer, k_growth=0.05, K=500, t_lag=25, method='LSODA', dt=10):
+    def __init__(self,statecontain:StateContainer, k_growth=0.000133, K=1.2e9, t_lag=25, method='LSODA', dt=600):
         self.statecontain = statecontain
         self.method = method
         self.k_growth = k_growth
@@ -58,7 +58,7 @@ class GrowthModel:
 
     def growth_eqn(self, t, X):
         if t > self.t_lag:
-            dX = self.k_growth*X*(1 - X/self.K)
+            dX = self.k_growth * np.log(self.K/X) * X
         else:
             dX = 0
         return dX
@@ -69,7 +69,7 @@ class GrowthModel:
         return sol_df
 
 class bioscrapeModel:
-    def __init__(self, sbml_filename:str, statecontain:StateContainer, dt=10):
+    def __init__(self, sbml_filename:str, statecontain:StateContainer, dt=600):
         self.statecontain = statecontain
         self.model = Model(sbml_filename=sbml_filename)
         self.dt = dt
@@ -101,77 +101,44 @@ class Multimodel:
 
         return self.state_container.get_df()
 
-state_container = StateContainer(initial_state={"X":1, 
-                                                "dna_part_prom_forward_part_rbs_forward_part_YFP_forward_part_t_forward_":1,
-                                                "protein_YFP_degtagged":0,
-                                                "rna_part_rbs_forward_part_YFP_forward_part_t_forward_":0
-                                                })
-
-growth_model = GrowthModel(statecontain=state_container)
-g_sol = growth_model.run_sim(t_span=[0, 500])
-
-bioscrape_model = bioscrapeModel(sbml_filename="crn_docs/test.xml", statecontain=state_container)
-bioscrape_res = bioscrape_model.run_sim(t_span=[0, 500], num_time_step=100)
-
-models = [growth_model, bioscrape_model]
-multimodel = Multimodel(models=models, state_container=state_container, t_final=500)
-multimodel_res = multimodel.run_sim()
-multimodel_res.to_csv("multimodel_res.csv", index=False)
-
-plt.figure(figsize=(10, 10))
-
-plt.subplot(311)
-
-plt.title("Growth Sim")
-plt.plot(g_sol["time"], g_sol["X"])
-plt.xlabel('Time')
-plt.ylabel('Cell Count')
-
-plt.subplot(312)
-
-plt.title("Single Cell Sim")
-plt.plot(bioscrape_res["time"], bioscrape_res["protein_YFP_degtagged"])
-plt.xlabel('Time')
-plt.ylabel('YFP')
-
-plt.subplot(313)
-
-plt.title("Culture Sim")
-plt.plot(multimodel_res["time"], multimodel_res["protein_YFP_degtagged"])
-plt.xlabel('Time')
-plt.ylabel('YFP')
-
-plt.tight_layout()
-plt.show()
-
 X_lst = []
 Y_lst = []
+Z_lst = []
+cell_lst = []
 
 plt.figure()
 
-for i in range(1000):
+for i in range(100):
 
+    ktx = 0.05
     ktl = abs(np.random.uniform(0.01, 0.1))# + np.random.normal(scale=0.005))
     kdil = abs(np.random.uniform(0.001, 0.01))# + np.random.normal(scale=0.0005))
+    tlag = abs(np.random.uniform(5*3600))# + np.random.normal(scale=5))
 
-    simpleTUsbmlGenerator(ktx=0.05, ktl=ktl, kdil=kdil)
-    state_container = StateContainer(initial_state={"X":1, 
-                                                "dna_part_prom_forward_part_rbs_forward_part_YFP_forward_part_t_forward_":1,
+    simpleTUsbmlGenerator(ktx=ktx, ktl=ktl, kdil=kdil)
+    state_container = StateContainer(initial_state={"X":1.72e6, 
+                                                "dna_part_prom_forward_part_rbs_forward_part_YFP_forward_part_t_forward_":1.72e6,
                                                 "protein_YFP_degtagged":0,
                                                 "rna_part_rbs_forward_part_YFP_forward_part_t_forward_":0
                                                 })
-    growth_model = GrowthModel(statecontain=state_container)
-    bioscrape_model = bioscrapeModel(sbml_filename="crn_docs/temp.xml", statecontain=state_container)
+    growth_model = GrowthModel(statecontain=state_container, t_lag=tlag)
+    bioscrape_model = bioscrapeModel(sbml_filename="Simulations/crn_docs/temp.xml", statecontain=state_container)
     models = [growth_model, bioscrape_model]
-    multimodel = Multimodel(models=models, state_container=state_container, t_final=500)
+    multimodel = Multimodel(models=models, state_container=state_container, t_final=72000)
     multimodel_res = multimodel.run_sim()
-    plt.plot(multimodel_res["time"], multimodel_res["protein_YFP_degtagged"], alpha=0.3, color='g')
+    plt.plot(multimodel_res["time"]/3600, multimodel_res["protein_YFP_degtagged"], alpha=0.3, color='g')
 
+    cell_lst.append(multimodel_res["X"])
     X_lst.append(multimodel_res["protein_YFP_degtagged"])
+    #print(multimodel_res['rna_part_rbs_forward_part_YFP_forward_part_t_forward_'].iloc[-1])
     Y_lst.append([ktl, kdil, multimodel_res['rna_part_rbs_forward_part_YFP_forward_part_t_forward_'].iloc[-1]])
+    Z_lst.append([ktx, kdil, ktl, kdil])
+
 
 plt.show()
 
-np.save('sim_TU_data/yfp_culture.npy', X_lst)
-np.save('sim_TU_data/param_labels_culture.npy', Y_lst)
-np.save('sim_TU_data/time_culture.npy', multimodel_res['time'])
+np.save('Simulations/sim_TU_data/cell_conc_culture.npy', cell_lst)
+np.save('Simulations/sim_TU_data/yfp_culture.npy', X_lst)
+np.save('Simulations/sim_TU_data/param_labels_culture.npy', Y_lst)
+np.save('Simulations/sim_TU_data/time_culture.npy', multimodel_res['time']/3600)
+np.save('Simulations/sim_TU_data/param_labels_culture_PIAE.npy', Z_lst)

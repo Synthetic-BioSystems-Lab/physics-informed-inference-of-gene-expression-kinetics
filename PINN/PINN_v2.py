@@ -8,6 +8,18 @@ import math
 def inv_minmax(x, X_min, X_max):
     return x * (X_max - X_min) + X_min
 
+def central_difference(y, timepoints):
+    dt = timepoints[1] - timepoints[0]
+    dy_dt = torch.zeros_like(y)
+
+    # Central difference for interior points
+    dy_dt[1:-1] = (y[2:] - y[:-2]) / (2 * dt)
+
+    dy_dt[0]  = (y[1]  - y[0])   / dt
+    dy_dt[-1] = (y[-1] - y[-2])  / dt
+
+    return dy_dt
+
 
 def plot_predictions(save_direct, x_train, y_train, x_test, y_test, y_pred, title=""):
     x_train, x_test = np.asarray(x_train), np.asarray(x_test)
@@ -304,3 +316,19 @@ class PINN():
         print(f'\nOverall Accuracy within 5%: {overall_accuracy:.2f}%')
         
         return overall_accuracy
+    
+    def run_NN(self, X_input):
+
+            self.X_min, self.X_max = X_input.min(), X_input.max()
+            X_input = (X_input - self.X_min) / (self.X_max - self.X_min)
+            X_input = torch.tensor(X_input, dtype=torch.float32)
+            X_input = X_input.to(self.device)
+
+            with torch.inference_mode():
+                y_pred = self.module(X_input)
+                ktl = inv_minmax(y_pred[:, 0], self.Y0_min, self.Y0_max)
+                kdil = inv_minmax(y_pred[:, 1], self.Y1_min, self.Y1_max)
+                mrna = inv_minmax(y_pred[:, 2], self.Y2_min, self.Y2_max)
+        
+
+            return ktl, kdil, mrna

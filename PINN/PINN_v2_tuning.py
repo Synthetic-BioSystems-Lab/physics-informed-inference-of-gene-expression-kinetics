@@ -16,6 +16,18 @@ def get_accuracy(y_true, y_pred):
     
     return acc_within_5
 
+def central_difference(y, timepoints):
+    dt = timepoints[1] - timepoints[0]
+    dy_dt = torch.zeros_like(y)
+
+    # Central difference for interior points
+    dy_dt[1:-1] = (y[2:] - y[:-2]) / (2 * dt)
+
+    dy_dt[0]  = (y[1]  - y[0])   / dt
+    dy_dt[-1] = (y[-1] - y[-2])  / dt
+
+    return dy_dt
+
 class PINN_module(nn.Module):
    
     def __init__(self, input_dim=2, hidden_dim=64, output_dim=2):
@@ -23,7 +35,8 @@ class PINN_module(nn.Module):
 
         self.fc1 = nn.Linear(input_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, int(hidden_dim/2))
-        self.fc3 = nn.Linear(int(hidden_dim/2), output_dim)
+        self.fc3 = nn.Linear(int(hidden_dim/2), 16)
+        self.fc4 = nn.Linear(16, output_dim)
         self.activation = nn.Softplus()
 
     def forward(self, x):
@@ -33,6 +46,8 @@ class PINN_module(nn.Module):
         out = self.fc2(out)
         out = self.activation(out)
         out = self.fc3(out)
+        out = self.activation(out)
+        out = self.fc4(out)
 
         return out
 
@@ -47,8 +62,7 @@ class PINN():
         self.phys_start_epoch = phys_start_epoch
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        time_lst =np.load("Simulations/sim_TU_data/time_culture.npy")
-        self.dt = time_lst[-1] - time_lst[-2]
+        self.time_lst = np.load("Simulations/sim_TU_data/time_culture.npy")
 
     def fit(self, X, Y, batch_size=32):
         
@@ -110,8 +124,9 @@ class PINN():
 
                 # 0 = (ktl * M) - (kdil * A) - dAdt
                 eps = 1e-6
-                res = ktl * mrna - kdil * yfp_final - ((yfp_final - yfp_penult) / self.dt)
-                scale1 = (ktl * mrna).abs() + (kdil * yfp_final).abs() + ((yfp_final - yfp_penult) / self.dt).abs() + eps
+                dAdt = central_difference(x_batch, self.time_lst)
+                res = ktl * mrna - kdil * yfp_final - dAdt
+                scale1 = (ktl * mrna).abs() + (kdil * yfp_final).abs() + (dAdt).abs() + eps
                 loss_phys = (res.abs() / scale1).mean()
                 
                 if self.epoch <= self.phys_start_epoch:
@@ -152,16 +167,16 @@ def main():
         "lr": tune.loguniform(1e-4, 1e-2),
         # "weight_decay": tune.choice([0, 1e-5, 1e-3, 1e-2]),
         "lambda_phys": tune.loguniform(0.00001, 10),
-        "hidden_dim": tune.choice([32, 64]),
-        "batch_size": tune.choice([32, 64]),
-        "phys_start_epoch": tune.choice([500, 1000, 1500])
+        "hidden_dim": tune.choice([32, 64, 128]),
+        "batch_size": tune.choice([50, 100, 200]),
+        "phys_start_epoch": tune.choice([0])
     }
 
     X_lst = np.load("Simulations/sim_TU_data/yfp_culture.npy")
     Y_lst = np.load("Simulations/sim_TU_data/param_labels_culture.npy")
 
     def train_pinn(config):
-        pinn = PINN(n_epochs=2001, lr=config["lr"], weight_decay=0, 
+        pinn = PINN(n_epochs=501, lr=config["lr"], weight_decay=0, 
                     lambda_phys=config["lambda_phys"], hidden_dim=config["hidden_dim"],
                     phys_start_epoch=config["phys_start_epoch"])
         pinn.fit(X_lst, Y_lst, batch_size=config["batch_size"])
@@ -175,7 +190,7 @@ def main():
     ray.init(runtime_env={"working_dir": "."})
 
     scheduler = ASHAScheduler(metric="overall_accuracy", mode="max", 
-                              max_t=2001, grace_period=100, reduction_factor=4)
+                              max_t=2001, grace_period=50, reduction_factor=4)
     optuna_search = OptunaSearch(metric="overall_accuracy", mode="max")
 
     tuner = tune.Tuner(train_pinn, param_space=config, 
