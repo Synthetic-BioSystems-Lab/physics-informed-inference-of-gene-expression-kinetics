@@ -8,19 +8,6 @@ import math
 def inv_minmax(x, X_min, X_max):
     return x * (X_max - X_min) + X_min
 
-def central_difference(y, timepoints):
-    dt = timepoints[1] - timepoints[0]
-    dy_dt = torch.zeros_like(y)
-
-    # Central difference for interior points
-    dy_dt[1:-1] = (y[2:] - y[:-2]) / (2 * dt)
-
-    dy_dt[0]  = (y[1]  - y[0])   / dt
-    dy_dt[-1] = (y[-1] - y[-2])  / dt
-
-    return dy_dt
-
-
 def plot_predictions(save_direct, x_train, y_train, x_test, y_test, y_pred, title=""):
     x_train, x_test = np.asarray(x_train), np.asarray(x_test)
     y_train, y_test, y_pred = np.asarray(y_train), np.asarray(y_test), np.asarray(y_pred)   
@@ -182,7 +169,8 @@ class PINN():
                 res = ktl * mrna - kdil * yfp_final - ((yfp_final - yfp_penult) / dt)
                 scale1 = (ktl * mrna).abs() + (kdil * yfp_final).abs() + ((yfp_final - yfp_penult) / dt).abs() + eps
                 loss_phys = (res.abs() / scale1).mean()
-                              
+                
+
                 if self.epoch <= self.phys_start_epoch:
                     loss = loss_data
                 else:
