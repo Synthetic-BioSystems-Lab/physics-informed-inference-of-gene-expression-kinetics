@@ -7,9 +7,13 @@ E. Coli (cells/mL)/OD600 -> (0.6-2) e9 -> https://book.bionumbers.org/what-is-th
 import matplotlib
 import pandas as pd
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from scipy.optimize import curve_fit
+
+mpl.rcParams['axes.spines.top'] = False
+mpl.rcParams['axes.spines.right'] = False
 
 def gompertz_growth(t, x_0, k_g, K, t_lag):
     t = np.asarray(t)  # Ensure t is an array for vectorized operations
@@ -80,7 +84,7 @@ for i in range(len(OD600_plots)):
 
 plt.xlabel('Time (hours)')
 plt.ylabel('Cell Count (cells/mL)')
-plt.title(f'Gompertz Fit (R^2={r_squared:.3f})')
+# plt.title(f'Gompertz Fit (R^2={r_squared:.3f})')
 # plt.legend()
 plt.show()
 print(df)

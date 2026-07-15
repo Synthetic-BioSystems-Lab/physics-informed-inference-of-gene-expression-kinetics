@@ -18,6 +18,25 @@ plt.xlabel('Time (hours)')
 plt.ylabel('GFP')
 plt.show()
 
+indices = np.linspace(0, filtered_GFP_values.shape[0] - 1, 51)
+indices = np.round(indices).astype(int)
+
+
+indices_time = np.linspace(0, filtered_GFP_time.shape[0] - 1, 51)
+indices_time = np.round(indices_time).astype(int)
+
+filtered_GFP_values = filtered_GFP_values[indices]
+filtered_GFP_time = filtered_GFP_time[indices_time]
+
+plt.figure()
+
+for i in range(filtered_GFP_values.shape[1]):
+    plt.plot(filtered_GFP_time, filtered_GFP_values[:, i])
+
+plt.xlabel('Time (hours)')
+plt.ylabel('GFP')
+plt.show()
+
 # Convert to PyTorch tensor
 filtered_GFP_values = torch.tensor(filtered_GFP_values, dtype=torch.float32)
 

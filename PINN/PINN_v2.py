@@ -1,9 +1,13 @@
 import numpy as np
 import torch
 from torch import nn
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader, random_split
 import math
+
+mpl.rcParams['axes.spines.top'] = False
+mpl.rcParams['axes.spines.right'] = False
 
 def inv_minmax(x, X_min, X_max):
     return x * (X_max - X_min) + X_min
@@ -267,6 +271,8 @@ class PINN():
         plt.xlabel('Epochs')
         plt.savefig(f"{self.save_direct}/PINN_v2_accuracy_{self.epoch}_{self.lambda_phys}.svg")
         plt.close()
+
+        return self.epochs_lst, self.acc_lst
     
     def predict(self):
         

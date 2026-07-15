@@ -267,6 +267,8 @@ class PILSTM():
         plt.xlabel('Epochs')
         plt.savefig(f"{self.save_direct}/PILSTM_v2_accuracy_{self.epoch}_{self.lambda_phys}.svg")
         plt.close()
+
+        return self.epochs_lst, self.acc_lst
     
     def predict(self):
         

@@ -76,6 +76,7 @@ class PIAE_module(nn.Module):
     def forward(self, cell_conc):
 
         DNA = self.copynum*cell_conc
+        print(DNA.shape)
         ktx_kdeg_m = (self.encoder_1(DNA))
         mRNA = self.decoder_1(ktx_kdeg_m)
 
@@ -144,10 +145,11 @@ class PIAE():
                 cell_conc_batch, FP_batch = cell_conc_batch.to(self.device), FP_batch.to(self.device)
 
                 DNA, ktx_kdeg_m, mRNA, ktl_kdeg_p, protein = self.module(cell_conc_batch)
+                print(DNA.shape)
                 loss_data = self.loss_fn(protein, FP_batch)
 
                 if self.epoch >= self.phys_start_epoch:
-                    print(ktx_kdeg_m.shape, ktl_kdeg_p.shape)
+                    #print(ktx_kdeg_m.shape, ktl_kdeg_p.shape)
                     ktx = ktx_kdeg_m[:, 0]
                     kdeg_m = ktx_kdeg_m[:, 1]
                     ktl = ktl_kdeg_p[:, 0]

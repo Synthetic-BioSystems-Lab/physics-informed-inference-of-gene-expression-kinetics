@@ -1,7 +1,11 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from scipy.signal import butter, filtfilt
+
+mpl.rcParams['axes.spines.top'] = False
+mpl.rcParams['axes.spines.right'] = False
 
 OD600_data = pd.read_excel('Experimental_Data/Blank_OD600_GFP_4-2-2026.xlsx')
 OD600_plots = OD600_data.columns.difference(['Kinetic read'])
@@ -14,8 +18,6 @@ plt.ylabel('OD600')
 plt.legend(['A1', 'A2', 'A3'])
 plt.show()
 
-
-
 GFP_data = pd.read_excel('Experimental_Data/BlankGFP_4-2-2026.xlsx')
 GFP_plots = GFP_data.columns.difference(['Kinetic read'])
 GFP_data['Kinetic read'] = GFP_data['Kinetic read'].apply(
@@ -24,7 +26,7 @@ GFP_data['Kinetic read'] = GFP_data['Kinetic read'].apply(
 GFP_data.plot('Kinetic read', GFP_plots)
 plt.xlabel('Time (hours)')
 plt.ylabel('GFP')
-plt.legend(['A1', 'A2', 'A3'])
+plt.legend([])
 plt.show()
 
 
@@ -43,7 +45,7 @@ filtered_GFP[GFP_plots] = filtered_GFP[GFP_plots].where(filtered_GFP[GFP_plots] 
 filtered_GFP.plot('Kinetic read', GFP_plots)
 plt.xlabel('Time (hours)')
 plt.ylabel('GFP')
-plt.legend(['A1', 'A2', 'A3'])
+# plt.legend(['A1', 'A2', 'A3'])
 plt.show()
 
 filtered_GFP_time = filtered_GFP['Kinetic read'].to_numpy()
