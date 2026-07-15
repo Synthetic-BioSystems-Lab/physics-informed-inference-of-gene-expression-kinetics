@@ -1,25 +1,16 @@
 import numpy as np
 import torch
 from torch import nn
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader, random_split
 import math
 
+mpl.rcParams['axes.spines.top'] = False
+mpl.rcParams['axes.spines.right'] = False
+
 def inv_minmax(x, X_min, X_max):
     return x * (X_max - X_min) + X_min
-
-def central_difference(y, timepoints):
-    dt = timepoints[1] - timepoints[0]
-    dy_dt = torch.zeros_like(y)
-
-    # Central difference for interior points
-    dy_dt[1:-1] = (y[2:] - y[:-2]) / (2 * dt)
-
-    dy_dt[0]  = (y[1]  - y[0])   / dt
-    dy_dt[-1] = (y[-1] - y[-2])  / dt
-
-    return dy_dt
-
 
 def plot_predictions(save_direct, x_train, y_train, x_test, y_test, y_pred, title=""):
     x_train, x_test = np.asarray(x_train), np.asarray(x_test)
@@ -182,7 +173,8 @@ class PINN():
                 res = ktl * mrna - kdil * yfp_final - ((yfp_final - yfp_penult) / dt)
                 scale1 = (ktl * mrna).abs() + (kdil * yfp_final).abs() + ((yfp_final - yfp_penult) / dt).abs() + eps
                 loss_phys = (res.abs() / scale1).mean()
-                              
+                
+
                 if self.epoch <= self.phys_start_epoch:
                     loss = loss_data
                 else:
@@ -279,6 +271,8 @@ class PINN():
         plt.xlabel('Epochs')
         plt.savefig(f"{self.save_direct}/PINN_v2_accuracy_{self.epoch}_{self.lambda_phys}.svg")
         plt.close()
+
+        return self.epochs_lst, self.acc_lst
     
     def predict(self):
         

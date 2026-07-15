@@ -124,9 +124,9 @@ class PINN():
 
                 # 0 = (ktl * M) - (kdil * A) - dAdt
                 eps = 1e-6
-                dAdt = central_difference(x_batch, self.time_lst)
-                res = ktl * mrna - kdil * yfp_final - dAdt
-                scale1 = (ktl * mrna).abs() + (kdil * yfp_final).abs() + (dAdt).abs() + eps
+                dt = self.time_lst[-1] - self.time_lst[-2]
+                res = ktl * mrna - kdil * yfp_final - ((yfp_final - yfp_penult) / dt)
+                scale1 = (ktl * mrna).abs() + (kdil * yfp_final).abs() + ((yfp_final - yfp_penult) / dt).abs() + eps
                 loss_phys = (res.abs() / scale1).mean()
                 
                 if self.epoch <= self.phys_start_epoch:
